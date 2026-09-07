@@ -56,9 +56,6 @@ log(
     : `brand ${brand.name}: rules from ${brand.source === 'file' ? 'config/brand.json' : 'BRAND_INSTRUCTIONS'}`,
 );
 
-const tools = await mcp.discover();
-log(`store ${config.shopDomain()} offers: ${tools.join(', ') || '(nothing — is it reachable?)'}`);
-
 const handle = createConcierge({
   db,
   mcp,
@@ -120,6 +117,29 @@ registerConsole(app, db, {
   testerCustomerId: process.env.IG_TESTER_ID ?? 'slittone-1',
 });
 
+/**
+ * Listen before talking to anyone else.
+ *
+ * Tool discovery used to run first, which put a third party's network call
+ * between boot and the open port — and a platform healthcheck cannot tell that
+ * apart from a hang. The container was killed before it ever listened, and
+ * because the kill is a signal rather than an exception, the logs showed a
+ * restart loop with no error in it at all.
+ *
+ * So the port opens first and discovery follows. Nothing is lost by the gap:
+ * `McpClient.has()` treats "not yet discovered" as optimistic, so a turn
+ * arriving in that window is offered every tool and any failure reaches the
+ * customer as words — which is the same behaviour as an unreachable store.
+ */
 await app.listen({ port: config.port(), host: '0.0.0.0' });
 log(`listening on :${config.port()}`);
+
+void mcp
+  .discover()
+  .then((tools) =>
+    log(`store ${config.shopDomain()} offers: ${tools.join(', ') || '(nothing — is it reachable?)'}`),
+  )
+  .catch((error: unknown) =>
+    log(`store ${config.shopDomain()} could not be reached at boot: ${(error as Error).message}`),
+  );
 log(`conversations at http://localhost:${config.port()}/`);
