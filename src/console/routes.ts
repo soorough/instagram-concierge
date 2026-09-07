@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { FastifyInstance } from 'fastify';
@@ -161,6 +161,28 @@ export function registerConsole(app: FastifyInstance, db: DB, deps: ConsoleDeps)
    * It is one small HTML document on a demo console, so re-reading it per
    * request costs nothing worth measuring.
    */
+  /**
+   * The console's compiled client.
+   *
+   * `here` is the directory of *this* module, which is `dist/console` in a build
+   * and `src/console` under tsx. The compiler only emits into `dist`, so the
+   * development path looks there explicitly rather than pretending the file
+   * sits next to the source it came from.
+   */
+  app.get('/client.js', async (_req, reply) => {
+    const compiled = join(here, 'client.js');
+    const path = existsSync(compiled) ? compiled : join(here, '../../dist/console/client.js');
+
+    if (!existsSync(path)) {
+      // Says what to do rather than 404-ing into a blank page.
+      return reply.code(503).type('text/plain').send('console client not built — run `npm run build`');
+    }
+    return reply
+      .type('text/javascript')
+      .header('cache-control', 'no-store, must-revalidate')
+      .send(readFileSync(path, 'utf8'));
+  });
+
   app.get('/', async (_req, reply) =>
     reply
       .type('text/html')

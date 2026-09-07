@@ -142,4 +142,19 @@ void mcp
   .catch((error: unknown) =>
     log(`store ${config.shopDomain()} could not be reached at boot: ${(error as Error).message}`),
   );
-log(`conversations at http://localhost:${config.port()}/`);
+/**
+ * Where the console actually is.
+ *
+ * This said `localhost` unconditionally, which is wrong the moment the thing is
+ * deployed — and wrong in the one place people read it, since the line is shown
+ * in the console's own ledger. A deployed instance telling you to visit
+ * localhost is a small lie that costs a few seconds of confusion every time.
+ *
+ * Railway publishes the assigned domain; other platforms tend to publish
+ * something similar, so an explicit PUBLIC_URL wins over both.
+ */
+const publicUrl =
+  process.env.PUBLIC_URL ??
+  (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : undefined) ??
+  `http://localhost:${config.port()}`;
+log(`conversations at ${publicUrl}/`);
