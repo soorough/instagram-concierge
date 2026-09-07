@@ -1,24 +1,18 @@
-# Node is pinned in package.json engines as well, so the build image and the run image
-# agree. That agreement is the whole point: better-sqlite3 is a native module and its
-# prebuilt binary is locked to one Node ABI.
+# Node 22, and not by preference: better-sqlite3@13 declares `engines: { node: ">=22" }`.
+# Built or loaded against an older ABI it does not fail politely — it segfaults, killing the
+# process before any JavaScript runs and therefore before anything can be logged. The only
+# trace was a restart loop containing nothing but npm echoing the start script, and the
+# actual cause sat in the *build* log as an EBADENGINE warning, not the deploy log.
+#
+# package.json `engines` says the same thing, so the build image and the run image agree.
 [phases.setup]
-nixPkgs = ["nodejs_20", "python3", "gcc", "gnumake"]
+nixPkgs = ["nodejs_22", "python3", "gcc", "gnumake"]
 
 # devDependencies are needed to *build* (typescript), not to run.
 [phases.install]
 cmds = ["npm ci --include=dev --no-audit --no-fund"]
 
-# better-sqlite3 is rebuilt from source rather than trusting the downloaded prebuild.
-# A prebuild compiled for a different Node ABI does not fail to load politely — it
-# segfaults, which kills the process before any JavaScript runs and therefore before
-# anything can be logged. That produced a restart loop whose only visible content was
-# npm echoing the start script. Compiling here costs a slower build and removes the
-# entire class of failure.
-#
-# TypeScript is compiled here too: running a transpiler in production is both slower
-# and one more thing that can fail where nothing is watching.
+# TypeScript is compiled here rather than at boot: running a transpiler in production is
+# slower and is one more thing that can fail where nothing is watching.
 [phases.build]
-cmds = [
-  "npm rebuild better-sqlite3 --build-from-source",
-  "npm run build",
-]
+cmds = ["npm run build"]
