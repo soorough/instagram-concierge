@@ -224,18 +224,75 @@
     .trace { padding-bottom: 10px; }
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+  /*
+   * The unlock screen.
+   *
+   * One field, because there is one password — this is an internal tool behind a
+   * shared secret, not a product with accounts, and dressing it as a sign-in
+   * flow would claim otherwise. Same shape as the sibling concierge's gate:
+   * square corners, monospace throughout, and the input and button joined into
+   * one control so it reads as a single action rather than a form to fill in.
+   */
+  .lock {
+    position: fixed; inset: 0; z-index: 20;
+    display: grid; place-items: center;
+    background: var(--ground); padding: 24px;
+  }
+  .lock__box {
+    width: min(420px, 100%);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    padding: 22px 20px 20px;
+  }
+  .lock__eyebrow {
+    font: 10.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: .16em; text-transform: uppercase; color: var(--ink-dim);
+    margin: 0 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--line);
+  }
+  .lock__note {
+    font: 11.5px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ink-dim); margin: 0; padding-bottom: 14px;
+  }
+
+  /* Joined: the input's right border is the button's left border. */
+  .lock__field { display: flex; gap: 0; }
+  .lock__field input {
+    flex: 1; min-width: 0;
+    border: 1px solid var(--line); border-right: none;
+    background: var(--ground); color: var(--ink);
+    padding: 9px 11px;
+    font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .lock__field input:focus-visible { outline: none; border-color: var(--ink-dim); }
+  .lock__field button {
+    border: 1px solid var(--ink); background: var(--ink); color: var(--ground);
+    padding: 9px 15px; cursor: pointer;
+    font: 11px ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: .1em; text-transform: uppercase;
+  }
+  .lock__field button:hover { background: #fff; border-color: #fff; }
+
+  .lock__error {
+    font: 11.5px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: #d4604f; margin: 0; padding-top: 12px; min-height: 1em;
+  }
 </style>
 </head>
 <body>
 <div class="lock" id="lock" hidden>
-  <form id="lock-form">
-    <h2>ONEHOPE concierge</h2>
-    <p>This console spends model credits and can clear the demo, so it is behind
-       one shared password.</p>
-    <input type="password" id="lock-input" placeholder="Console password"
-           aria-label="Console password" autocomplete="current-password" />
-    <button type="submit">Unlock</button>
-    <span class="lock-error" id="lock-error"></span>
+  <form class="lock__box" id="lock-form">
+    <p class="lock__eyebrow"><span>Concierge</span></p>
+    <p class="lock__note">
+      This console is shared and spends model credits, so it is behind a
+      password.
+    </p>
+    <div class="lock__field">
+      <input type="password" id="lock-input" placeholder="Console password"
+             aria-label="Console password" autocomplete="current-password" />
+      <button type="submit">Unlock</button>
+    </div>
+    <p class="lock__error" id="lock-error"></p>
   </form>
 </div>
 
