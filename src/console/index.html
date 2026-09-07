@@ -239,6 +239,15 @@
     display: grid; place-items: center;
     background: var(--ground); padding: 24px;
   }
+  /*
+   * `display: grid` above outranks the browser's own `[hidden] { display: none }`
+   * — both are one class/attribute of specificity, and the author sheet wins. So
+   * setting `hidden` marked the element hidden without hiding it: the console
+   * rendered underneath a lock screen that never went away, and the attribute
+   * read as `true` the whole time. Anything asserting on `.hidden` agreed, which
+   * is how it survived being "verified".
+   */
+  .lock[hidden] { display: none; }
   .lock__box {
     width: min(420px, 100%);
     background: var(--surface);
