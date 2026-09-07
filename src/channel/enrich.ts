@@ -40,6 +40,14 @@ export type Enrichment = {
   /** Why the profile is absent, when it is. Surfaced, never swallowed. */
   profileUnavailable?: string;
   post?: PostDetails;
+  /**
+   * True when the profile came from configuration rather than the platform.
+   *
+   * Never hidden: the opener is told, the console shows it, and NOTES.md
+   * explains why it exists. A personalisation surface that quietly invents its
+   * own facts is worse than one that is missing.
+   */
+  profileSubstituted?: boolean;
 };
 
 export interface Enricher {
@@ -61,11 +69,34 @@ export class GraphEnricher implements Enricher {
       mediaId ? this.post(mediaId) : Promise.resolve(undefined),
     ]);
 
-    return {
-      ...(profile.value ? { profile: profile.value } : {}),
-      ...(profile.value ? {} : { profileUnavailable: profile.reason }),
-      ...(post ? { post } : {}),
-    };
+    if (profile.value) {
+      return { profile: profile.value, ...(post ? { post } : {}) };
+    }
+
+    /**
+     * The platform will not give us this one, so configuration may.
+     *
+     * The brief's target feel opens "Hey Maya!" — a first name, which comes from
+     * the User Profile endpoint. That endpoint works: it answers correctly for
+     * any real app-scoped id. What we lack is the commenter's id. An app-scoped
+     * id is minted only when the platform delivers an event involving that
+     * person, and delivery is exactly what Live mode gates, so the chain is
+     * no Live mode → no delivery → no id → no profile. The post's comments edge
+     * does not fill the gap either: `comments_count` reads 1 while the edge
+     * returns an empty array.
+     *
+     * The brief permits a simulated layer where access blocks entirely, provided
+     * the tradeoff is documented. So a configured demo profile stands in, and
+     * says so — `profileSubstituted` travels with it into the prompt and the
+     * console. Without the variable set, nothing is invented and the opener
+     * degrades as before.
+     */
+    const substituted = demoProfile();
+    if (substituted) {
+      return { profile: substituted, profileSubstituted: true, ...(post ? { post } : {}) };
+    }
+
+    return { profileUnavailable: profile.reason, ...(post ? { post } : {}) };
   }
 
   private async profile(
@@ -143,4 +174,26 @@ export class NoEnricher implements Enricher {
   async forComment(): Promise<Enrichment> {
     return { profileUnavailable: 'enrichment is disabled (no access token configured)' };
   }
+}
+
+/**
+ * A commenter profile supplied by configuration, for demonstration only.
+ *
+ * Returns undefined unless `IG_DEMO_PROFILE_NAME` is set, so a deployment that
+ * does not opt in behaves exactly as it did: the fetch is attempted, it fails,
+ * and the opener is told plainly that it knows nothing about this person.
+ */
+export function demoProfile(): CustomerProfile | undefined {
+  const name = process.env.IG_DEMO_PROFILE_NAME?.trim();
+  if (!name) return undefined;
+
+  const followers = Number(process.env.IG_DEMO_PROFILE_FOLLOWERS);
+  return {
+    name,
+    ...(process.env.IG_TESTER_HANDLE ? { username: process.env.IG_TESTER_HANDLE } : {}),
+    ...(Number.isFinite(followers) ? { followerCount: followers } : {}),
+    ...(process.env.IG_DEMO_PROFILE_FOLLOWS
+      ? { followsBrand: process.env.IG_DEMO_PROFILE_FOLLOWS === 'true' }
+      : {}),
+  };
 }

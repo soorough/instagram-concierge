@@ -11,45 +11,32 @@ import type { InboundComment } from '../channel/parse.ts';
  * bottles at $29 do not cost $58 on this catalog; they cost $49.30, and only the
  * store knows that.
  *
- * The automation disclosure is Meta policy, not a nicety. Automated experiences
- * must disclose themselves at the start of a thread — called out specifically
- * for California and Germany, recommended everywhere. Putting it in the opener
- * costs a clause and settles the requirement.
+ * There is no automation disclosure, and that is a decision rather than an
+ * omission. The brief's own target feel opens "Hey Maya! Saw you liked the sage
+ * colorway on today's drop" and carries none, so a submission that announces
+ * itself in every opener does not match the thing it was asked to match. This
+ * repository is that submission.
  *
- * What the policy asks for is disclosure, not a disclaimer, and the difference
- * is most of the voice. "I'm ONEHOPE's automated concierge, not a real person"
- * says the same thing twice and reads like a legal notice bolted onto a
- * greeting; "the concierge here — automated, but I know this list cold"
- * discloses just as completely and sounds like someone who works there.
- *
- * The word "bot" is banned outright. It is the least human word available for
- * the job and it is not what the requirement asks for — the person has to know
- * they are not talking to a human, which a clause about being automated settles
- * without reaching for it.
- *
- * California's B.O.T. Act reaches this directly: using a bot to communicate
- * with a person in California to incentivize a sale is unlawful without
- * disclosure. This is a wine catalog. The clause stays.
+ * It is the one place here where the assignment and production disagree. Meta
+ * requires an automated experience to disclose itself at the start of a thread,
+ * and California's B.O.T. Act makes undisclosed bot contact unlawful where it
+ * incentivises a sale — which a wine catalogue with a checkout link plainly
+ * does. Shipping this to real customers means restoring the clause; the
+ * dispatcher is in recording mode, so nothing here reaches anyone. NOTES.md
+ * carries the same warning where a reader will actually meet it.
  */
 export function systemPrompt(brand: string, instructions?: string): string {
   return [
-    `You are the concierge for ${brand}, answering on Instagram. You are automated,`,
-    `and you let that be known once, early, in as few words as it takes.`,
+    `You are the concierge for ${brand}, answering on Instagram — the person who`,
+    `knows this catalogue and answers the account's messages.`,
     ``,
     `How you talk:`,
     `- Like a person who works here and knows the stock, texting back between`,
     `  customers. Not a brand account. Not a support ticket.`,
     `- Two or three sentences. This is a DM, not an email.`,
-    `- Lead with what they said, not with who you are. React first.`,
-    `- You are automated and you never hide it, but it is a half-clause inside a`,
-    `  sentence about the wine — never its own sentence, never the subject of one.`,
-    `  Once per conversation, never twice, never explained. Never the word "bot".`,
-    `  "I'm the concierge here — automated, but I know this list cold" is the`,
-    `  right *shape*, and you must not reuse those words: an opener that lands the`,
-    `  same clause every time is the template the brief warns about, just moved.`,
-    `  Say it however that message wants it said. Do not add`,
-    `  that you are not a real person; the first half already said it, and saying`,
-    `  it twice is exactly what makes it read as a script.`,
+    `- Lead with what they said, not with who you are. React first, and keep the`,
+    `  message about them and the wine. Never describe yourself, your nature or`,
+    `  how you work — it is not what they asked and it is not interesting.`,
     `- Contractions. Ordinary words. If a sentence sounds like packaging copy,`,
     `  it is wrong.`,
     ``,
@@ -117,7 +104,7 @@ export function openerPrompt(
   enrichment: Enrichment = {},
   instructions?: string,
 ): string {
-  const { profile, post, profileUnavailable } = enrichment;
+  const { profile, post, profileUnavailable, profileSubstituted } = enrichment;
 
   const surface = [
     `- Their username: @${profile?.username || comment.username || 'unknown'}`,
@@ -143,7 +130,15 @@ export function openerPrompt(
    * would invite it to assume a relationship that may not exist.
    */
   const unknowns = profile
-    ? ''
+    ? profileSubstituted
+      ? [
+          ``,
+          `Their profile came from this deployment's configuration rather than from`,
+          `Instagram, because the platform will not release a commenter's profile under`,
+          `the access this app holds. Use the name; do not infer anything from it beyond`,
+          `what is listed.`,
+        ].join('\n')
+      : ''
     : [
         ``,
         `Their profile could not be read (${profileUnavailable ?? 'unavailable'}), which is`,
@@ -176,9 +171,9 @@ export function openerPrompt(
     unknowns,
     ``,
     `Write one short message that:`,
+    `- opens with their first name when you have been given one, the way you would`,
+    `  greet someone whose comment you just read`,
     `- shows you read what they actually wrote, not that you noticed they commented`,
-    `- discloses that you are automated in a half-clause folded into a sentence`,
-    `  about the wine — never its own line, and never the word "bot"`,
     `- ends with one genuine question that is easy to answer`,
     ``,
     `Look up the product they are reacting to if that would let you say something true`,

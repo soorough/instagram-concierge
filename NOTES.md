@@ -30,6 +30,29 @@ which it may not. No prompt wording fixes data at the wrong resolution, so the
 prohibited states are a list in `config/brand.json`. Still model-enforced rather
 than structural: I would rather say that than imply a rail I did not build.
 
+**Matched to the brief's target feel, on two points where honesty pulled the
+other way.** Both are deliberate, and both would change for production.
+
+*No automation disclosure.* The brief's example opener — "Hey Maya! Saw you
+liked the sage colorway on today's drop" — carries none, so an opener that
+announces itself does not match the thing it was asked to match. Meta requires
+disclosure at the start of a thread, and California's B.O.T. Act makes
+undisclosed bot contact unlawful where it incentivises a sale, which a wine
+catalogue with a checkout link plainly does. Shipping to real customers means
+restoring one clause. The dispatcher records rather than sends, so nothing here
+reached anyone.
+
+*A configured commenter profile.* The brief opens with a first name, which comes
+from the User Profile endpoint. That endpoint works — it answers correctly for
+any real app-scoped id. What is missing is the commenter's id, and the chain is
+closed: an app-scoped id is minted only when the platform delivers an event
+involving that person, and delivery is what Live mode gates. The post's comments
+edge does not help either, reporting `comments_count: 1` while returning an
+empty array. The brief permits a simulated layer where access blocks entirely
+provided the tradeoff is documented, so `IG_DEMO_PROFILE_NAME` supplies the name
+and the substitution travels with it — the opener is told the profile came from
+configuration, and unset means nothing is invented at all.
+
 ## Punted
 
 Profile enrichment succeeding — the fetch is attempted (the brief's pipeline has
