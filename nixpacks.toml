@@ -5,7 +5,10 @@
 nixPkgs = ["nodejs_20", "python3", "gcc", "gnumake"]
 
 # There is no build step: `npm start` runs `tsx src/server.ts`, which compiles on the fly.
-# devDependencies are still needed at runtime because tsx is one of them.
+# tsx is therefore a *runtime* dependency and lives in `dependencies` — it used to sit in
+# devDependencies, which NODE_ENV=production prunes, so the container started with no tsx
+# to run and died before executing a line of application code. Nothing was logged, because
+# nothing of ours ever ran. Dev deps are still installed here for the typecheck below.
 [phases.install]
 cmds = ["npm ci --include=dev --no-audit --no-fund"]
 
