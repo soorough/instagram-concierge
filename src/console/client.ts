@@ -318,7 +318,9 @@ async function openThread(customerId: string): Promise<void> {
   const wasAtBottom = atBottom(scroller());
 
   // The request banner belongs to the thread on screen, not to the console.
-  $('request').hidden = data.requestState !== 'pending';
+  requestPending = data.requestState === 'pending';
+  $('request').hidden = !requestPending;
+  refreshComposer(requestPending ? 'accept the message request to reply' : undefined);
 
   $('who').textContent = data.username ? '@' + data.username : customerId;
   $('meta').textContent = `${data.messages.length} messages`;
@@ -433,8 +435,19 @@ const result = (text: string, bad = false): void => {
  */
 const gates = { identity: false, simulate: false, reset: false };
 
+/**
+ * True while the Opener is sitting unaccepted in their message requests.
+ *
+ * On Instagram there is no way to write into a pending request: the recipient's
+ * only moves are Accept and Delete, and replying *is* accepting. Leaving the
+ * composer live let a message be sent that the platform would never have
+ * carried, and it read as the concierge ignoring someone rather than as the
+ * door being shut.
+ */
+let requestPending = false;
+
 function refreshComposer(reason?: string): void {
-  const ready = gates.identity && gates.simulate;
+  const ready = gates.identity && gates.simulate && !requestPending;
   for (const el of document.querySelectorAll<HTMLButtonElement | HTMLInputElement>(
     '.composer button, .composer input',
   )) {
@@ -550,7 +563,9 @@ $('accept').onclick = async () => {
   const body = (await res.json()) as { error?: string };
   if (!res.ok) return result(body.error ?? 'refused', true);
 
+  requestPending = false;
   $('request').hidden = true;
+  refreshComposer();
   result('request accepted — the concierge can reply now');
   await Promise.all([loadThreads(), loadActivity()]);
   await openThread(current);
