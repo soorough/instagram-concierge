@@ -4,13 +4,13 @@
 [phases.setup]
 nixPkgs = ["nodejs_20", "python3", "gcc", "gnumake"]
 
-# There is no build step: `npm start` runs `tsx src/server.ts`, which compiles on the fly.
-# tsx is therefore a *runtime* dependency and lives in `dependencies` — it used to sit in
-# devDependencies, which NODE_ENV=production prunes, so the container started with no tsx
-# to run and died before executing a line of application code. Nothing was logged, because
-# nothing of ours ever ran. Dev deps are still installed here for the typecheck below.
+# devDependencies are needed to *build* (typescript), not to run.
 [phases.install]
 cmds = ["npm ci --include=dev --no-audit --no-fund"]
 
+# TypeScript is compiled here rather than at boot. Running `tsx` in production shipped a
+# transpiler to the server and did the whole compile inside the container's first seconds,
+# which is both slower and one more thing that can fail where nothing is watching.
+# `npm start` is now plain `node dist/server.js`.
 [phases.build]
-cmds = ["npx tsc --noEmit"]
+cmds = ["npm run build"]
