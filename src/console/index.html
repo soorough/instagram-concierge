@@ -81,16 +81,24 @@
 
   /* ── the thread ────────────────────────────────────────────────────── */
   /*
-   * Header, request banner, log, composer. The banner was added as a third
-   * child of a two-row grid, which handed it the 1fr row: it stretched to fill
-   * the pane and pushed the conversation out of its own column. Rows are named
-   * explicitly now so adding another band cannot silently take the flexible one.
+   * Header, request banner, log, composer — a column where only the log grows.
+   *
+   * This was a grid with a row per band, and it broke twice for the same
+   * reason: the rows were positional, so the layout depended on how many
+   * children existed. Adding the banner handed it the flexible row and it
+   * filled the pane; hiding the banner removed a grid item and slid every
+   * remaining child up a row, so the log took `auto` and collapsed while the
+   * composer took `1fr`. Flex has no positional rows to get out of step —
+   * the log grows, everything else is its own height, and a band appearing or
+   * disappearing changes nothing.
    */
   .thread {
-    display: grid;
-    grid-template-rows: auto auto 1fr auto;
+    display: flex;
+    flex-direction: column;
     min-width: 0;
+    min-height: 100vh;
   }
+  .thread .log { flex: 1; min-height: 0; }
   .thread header {
     display: flex; align-items: center; gap: 11px;
     padding: 14px 22px; border-bottom: 1px solid var(--line);
