@@ -178,6 +178,27 @@ does not arrive is real user activity, and the dashboard states why in one line
 above the field list: *to receive webhooks, your app must be in published state*.
 That is a far stronger claim than the original one — the boundary is located
 rather than merely encountered.
+
+**Then the same test with a real comment, on the same endpoint, minutes later.**
+`@slittone` commented on the post and it is visible there, unfiltered:
+
+    slittone · "Obsessed with the blend, is it good with steak?"
+
+    comments_count  1   — the API counts it, so the platform sees it
+    comments edge   []  — and still declines to return its content
+    webhook         —   nothing, for ten minutes
+
+Every variable that could explain the original null result is now eliminated.
+The endpoint is permanent and its callback verified. Meta's own deliveries for
+both subscribed fields reached it and passed signature verification, minutes
+before. Both accounts hold Instagram Tester roles. The comment exists and the
+platform's own counter proves it did not go missing.
+
+One difference remains between the deliveries that arrive and the one that does
+not: Meta sent the first kind itself, from a dashboard, and the second is real
+user activity. The dashboard states the rule directly above the field list — *to
+receive webhooks, your app must be in published state* — and this is what that
+sentence means in practice.
 Metadata about our own account is visible; anything belonging to another user
 is not.
 
