@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { FastifyInstance } from 'fastify';
-import { recent, reset as resetActivity } from './activity.ts';
+import { describeLine, note, recent, reset as resetActivity } from './activity.ts';
 import {
   resetDisabledReason,
   simulate,
@@ -10,6 +10,7 @@ import {
   type SimulateRequest,
 } from './simulate.ts';
 import { resetAll, type DB } from '../store/db.ts';
+import { acceptRequest, requestState } from '../store/conversation.ts';
 
 /**
  * A read-only window onto what the Concierge actually did.
@@ -121,6 +122,31 @@ export function registerConsole(app: FastifyInstance, db: DB, deps: ConsoleDeps)
     testerHandle: deps.testerHandle,
     testerCustomerId: deps.testerCustomerId,
   }));
+
+  /**
+   * The Customer accepting the message request.
+   *
+   * On Instagram this is their tap, on their phone, and there is no API for it —
+   * which is exactly why the console needs one. Without it the pending state
+   * would be a label nobody could move, and the flagship workflow would stop
+   * halfway with no way to show the rest.
+   *
+   * It is a console affordance and stays inside the console's own guard: it
+   * moves a row this deployment already owns and sends nothing to anyone.
+   */
+  app.post('/api/accept/:customerId', async (request, reply) => {
+    const disabled = simulationDisabledReason();
+    if (disabled) return reply.code(409).send({ error: disabled });
+
+    const { customerId } = request.params as { customerId: string };
+    if (requestState(db, customerId) !== 'pending') {
+      return reply.code(409).send({ error: 'there is no pending request for this customer' });
+    }
+
+    acceptRequest(db, customerId);
+    note(describeLine(`message request accepted by ${customerId} — the thread is open`));
+    return { accepted: true };
+  });
 
   app.get('/api/reset', async () => ({
     enabled: resetDisabledReason() === undefined,
@@ -275,6 +301,7 @@ export function registerConsole(app: FastifyInstance, db: DB, deps: ConsoleDeps)
 
     return {
       customerId,
+      requestState: requestState(db, customerId),
       username: (
         db.prepare('select username from conversation where customer_id = ?').get(customerId) as
           | { username: string | null }

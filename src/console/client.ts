@@ -40,7 +40,12 @@ type ThreadMessage = {
   trace: ToolCall[];
 };
 
-type Thread = { customerId: string; username: string | null; messages: ThreadMessage[] };
+type Thread = {
+  customerId: string;
+  username: string | null;
+  messages: ThreadMessage[];
+  requestState?: 'none' | 'pending' | 'accepted';
+};
 
 type Withheld = { commentId: string; reason: string; at: number };
 
@@ -312,6 +317,9 @@ async function openThread(customerId: string): Promise<void> {
   const grew = data.messages.length > rendered.messages;
   const wasAtBottom = atBottom(scroller());
 
+  // The request banner belongs to the thread on screen, not to the console.
+  $('request').hidden = data.requestState !== 'pending';
+
   $('who').textContent = data.username ? '@' + data.username : customerId;
   $('meta').textContent = `${data.messages.length} messages`;
 
@@ -530,6 +538,23 @@ $('redeliver').onclick = () =>
   fire({ kind: 'message', text: '(redelivery)', eventId: lastEventId, customerId: CUSTOMER }, 'redelivering');
 
 $('forge').onclick = () => fire({ kind: 'forged' }, 'sending forged signature');
+
+/**
+ * The Customer accepting the request — their tap, which the platform gives us
+ * no way to observe and no way to trigger.
+ */
+$('accept').onclick = async () => {
+  if (!current) return;
+  result('accepting request…');
+  const res = await fetch(`/api/accept/${encodeURIComponent(current)}`, { method: 'POST' });
+  const body = (await res.json()) as { error?: string };
+  if (!res.ok) return result(body.error ?? 'refused', true);
+
+  $('request').hidden = true;
+  result('request accepted — the concierge can reply now');
+  await Promise.all([loadThreads(), loadActivity()]);
+  await openThread(current);
+};
 
 /**
  * Clear everything, so a demo starts from nothing.

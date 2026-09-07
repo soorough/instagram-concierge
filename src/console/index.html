@@ -93,6 +93,22 @@
   .thread header small { color: var(--ink-dim); margin-left: auto; font-size: 12px; }
 
   .log { padding: 26px 22px 60px; overflow-y: auto; }
+
+  .request {
+    display: flex; align-items: center; gap: 14px;
+    margin: 0; padding: 12px 22px;
+    background: var(--claret-dim); border-bottom: 1px solid var(--line);
+    font-size: 12.5px; color: var(--ink);
+  }
+  .request[hidden] { display: none; }
+  .request span { flex: 1; }
+  .request button {
+    flex: none; padding: 7px 14px; cursor: pointer;
+    border: 1px solid var(--ink); background: var(--ink); color: var(--ground);
+    font: 11px ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: .08em; text-transform: uppercase;
+  }
+  .request button:hover { background: #fff; border-color: #fff; }
   /* A DM thread is narrow. Letting it span a wide monitor turns a conversation
      into two distant columns and loses the shape of the exchange. */
   .log > * { max-width: 860px; margin-left: auto; margin-right: auto; }
@@ -177,6 +193,9 @@
   .feed .withheld .code { color: var(--claret); }
   .feed .turn .code { color: #4a9e7f; }
   .feed .verified .code { color: #5f7fa8; }
+  /* What the Customer said — the evidence the rest of the row is about. */
+  .feed .inbound .code { color: #8a8a8a; }
+  .feed .inbound .detail { color: var(--ink); }
 
   /* The composer: the demo driven from here rather than a second terminal.
      Everything it fires goes out signed, over HTTP, at our own webhook. */
@@ -337,6 +356,16 @@
       <b id="who">Pick a conversation</b>
       <small id="meta"></small>
     </header>
+    <!--
+      The message request, as the Customer sees it.
+      An Opener lands here rather than in a thread, and nothing further reaches
+      them until they accept. There is no API for the tap, so the console
+      supplies one — otherwise the flagship workflow stops halfway.
+    -->
+    <div class="request" id="request" hidden>
+      <span>Your message request is waiting — the concierge cannot reply until it is accepted.</span>
+      <button type="button" id="accept">Accept request</button>
+    </div>
     <div class="log" id="log">
       <p class="empty">
         Nothing here yet. Send a message below, or leave a comment, and watch what

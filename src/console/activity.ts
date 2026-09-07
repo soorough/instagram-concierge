@@ -12,6 +12,7 @@
  */
 
 export type ActivityKind =
+  | 'inbound'
   | 'verified'
   | 'rejected'
   | 'duplicate'
@@ -143,6 +144,17 @@ export function describeLine(line: string): Omit<Activity, 'at'> {
     };
   }
 
+  /** What the Customer actually said, which is the evidence for everything after it. */
+  const inbound = /^(message|comment) from (\S+): "([\s\S]*)"$/.exec(line);
+  if (inbound) {
+    return {
+      kind: 'inbound',
+      code: `${inbound[1]} from ${inbound[2]}`,
+      detail: inbound[3] ?? '',
+      text: line,
+    };
+  }
+
   /**
    * A turn line names its outcome after the arrow, and that outcome is what
    * should colour it. Reading the keyword first got this backwards: a line
@@ -219,7 +231,13 @@ export function classify(line: string): Activity['kind'] {
   if (line.includes('already processed')) return 'duplicate';
   if (line.startsWith('ignored:')) return 'ignored';
   if (line.includes('withheld')) return 'withheld';
-  if (line.includes('window has closed') || line.includes('send failed')) return 'blocked';
+  if (
+    line.includes('window has closed') ||
+    line.includes('send failed') ||
+    line.includes('holding reply')
+  ) {
+    return 'blocked';
+  }
   if (line.includes('→')) return 'turn';
   return 'verified';
 }

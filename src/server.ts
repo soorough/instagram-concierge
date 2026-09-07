@@ -80,6 +80,16 @@ const app = buildReceiver({
   accountIds: brandAccountIds(),
   log,
   onEvent: async (event) => {
+    /**
+     * What arrived, before what we did about it.
+     *
+     * The ledger read as a list of verdicts with the evidence missing: you could
+     * see that an Opener was withheld without seeing the comment it was withheld
+     * for, which is the half that makes the judgement legible.
+     */
+    const who = event.kind === 'comment' && event.username ? `@${event.username}` : event.customerId;
+    log(`${event.kind} from ${who}: "${event.text}"`);
+
     const started = Date.now();
     const result = await handle(event);
     const total = Date.now() - started;

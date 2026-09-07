@@ -185,7 +185,16 @@ export class NoEnricher implements Enricher {
  */
 export function demoProfile(): CustomerProfile | undefined {
   const handle = process.env.IG_TESTER_HANDLE?.trim();
-  const name = process.env.IG_DEMO_PROFILE_NAME?.trim() || displayName(handle);
+  /**
+   * The name is configured, never derived.
+   *
+   * Deriving it from the handle looked right — the brief reads `@maya.runs` as
+   * "Maya" — and produced a real defect: `@slittone` becomes "Slittone", which
+   * is not name-shaped, and the model read its own greeting back as a product
+   * and searched the catalogue for a bottle called Slittone. A name that is not
+   * a name is worse than no name, and no name is a state this already handles.
+   */
+  const name = process.env.IG_DEMO_PROFILE_NAME?.trim();
   if (!name) return undefined;
 
   const followers = Number(process.env.IG_DEMO_PROFILE_FOLLOWERS);
@@ -197,17 +206,4 @@ export function demoProfile(): CustomerProfile | undefined {
       ? { followsBrand: process.env.IG_DEMO_PROFILE_FOLLOWS === 'true' }
       : {}),
   };
-}
-
-/**
- * A display name from a handle, the way the brief's own example reads it.
- *
- * `@maya.runs` is greeted as "Maya": the leading word, separators dropped,
- * capitalised. Deriving it beats configuring a name because it stays the real
- * account's — nothing is invented, and changing IG_TESTER_HANDLE changes the
- * greeting with it rather than leaving a stale first name behind.
- */
-function displayName(handle: string | undefined): string | undefined {
-  const first = handle?.split(/[._-]/)[0]?.replace(/[^a-z]/gi, '');
-  return first ? first.charAt(0).toUpperCase() + first.slice(1) : undefined;
 }

@@ -56,6 +56,7 @@ export type Handled =
   | { outcome: 'opened'; text: string; turn: TurnResult }
   | { outcome: 'withheld'; reason: string }
   | { outcome: 'window_closed'; reason: string }
+  | { outcome: 'request_pending'; reason: string }
   | { outcome: 'send_failed'; reason: string };
 
 export function createConcierge(deps: ConciergeDeps) {
@@ -69,13 +70,21 @@ export function createConcierge(deps: ConciergeDeps) {
     ensureConversation(deps.db, event.customerId, undefined, event.at);
 
     /**
-     * Their reply is the acceptance. The platform raises no event for it, and a
-     * Customer who writes back has accepted by definition — so this is the only
-     * signal there is, and it is a good one.
+     * An unaccepted request is a closed door, and a message arriving through it
+     * does not open it.
+     *
+     * A Private Reply sits in the recipient's message requests until they accept.
+     * Until that happens the thread is not open, so the message is recorded —
+     * it is real, they said it — and no reply is sent. Answering into a request
+     * the Customer has not accepted is the same mistake as answering outside the
+     * 24-hour window: the platform will not deliver it, and pretending otherwise
+     * puts a reply in the transcript that nobody received.
      */
     if (requestState(deps.db, event.customerId) === 'pending') {
-      acceptRequest(deps.db, event.customerId);
-      log(`message request accepted by ${event.customerId} — the thread is open`);
+      appendMessage(deps.db, event.customerId, 'customer', event.text, event.at);
+      const reason = 'the message request has not been accepted yet';
+      log(`holding reply to ${event.customerId}: ${reason}`);
+      return { outcome: 'request_pending', reason };
     }
 
     // History is read before the new message is stored, so the model sees the
