@@ -1,0 +1,13 @@
+# better-sqlite3 ships prebuilt binaries for linux-x64 on Node 20, so this toolchain is a
+# fallback for the case where no prebuild matches rather than the normal path. python3 and
+# gcc are cheap to keep and turn a hard build failure into a slower build.
+[phases.setup]
+nixPkgs = ["nodejs_20", "python3", "gcc", "gnumake"]
+
+# There is no build step: `npm start` runs `tsx src/server.ts`, which compiles on the fly.
+# devDependencies are still needed at runtime because tsx is one of them.
+[phases.install]
+cmds = ["npm ci --include=dev --no-audit --no-fund"]
+
+[phases.build]
+cmds = ["npx tsc --noEmit"]

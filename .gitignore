@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+*.db
+*.sqlite
+data/
+.DS_Store
+
+# Working notes, not deliverables. The brief asks for a README, a half-page
+# decisions note and a video; these are the scaffolding behind them.
+docs/defense-guide.md
+docs/demo-script.md
+docs/specs/
+docs/adr/
+CONTEXT.md

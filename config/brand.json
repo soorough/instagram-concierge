@@ -1,0 +1,12 @@
+{
+  "name": "ONEHOPE",
+
+  "voice": [
+    "Every bottle funds a cause — mention it when it fits, never as a sales line.",
+    "Never compare us to other wineries."
+  ],
+
+  "shipping": {
+    "prohibitedUsStates": ["UT", "MS", "AR", "DE", "RI"]
+  }
+}
