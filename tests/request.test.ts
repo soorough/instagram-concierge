@@ -17,10 +17,15 @@ import {
  * "the Customer is reachable", and a system that conflates them will happily
  * queue a second message to someone who has never opened the first.
  *
- * Acceptance is not a button we can see. What the platform gives us is their
- * reply: a Customer who writes back has, by definition, accepted. That makes
- * their first inbound message the transition, and it is the only signal the
- * platform actually offers.
+ * Acceptance is not a button we can see. There is no field for it and no
+ * webhook — what the platform gives us is their reply, and nobody writes back
+ * to a request they did not open. So an inbound message is the transition, and
+ * it is the only signal that actually exists.
+ *
+ * The console has an Accept button as well, so a demo can show the customer's
+ * side of a flow the API keeps hidden. It moves the same state deliberately:
+ * whichever arrives first opens the thread, and real traffic never waits on an
+ * affordance that only exists in the console.
  */
 const fresh = (): DB => {
   const db = new Database(':memory:') as unknown as DB;
@@ -70,5 +75,25 @@ describe('the message request', () => {
     acceptRequest(db, 'cust-1');
     openRequest(db, 'cust-1');
     expect(requestState(db, 'cust-1')).toBe('accepted');
+  });
+
+  it('is opened by whichever arrives first, message or button', () => {
+    /**
+     * The two paths must agree. If a real delivery could be held waiting for a
+     * button that exists only in the console, the model would have invented a
+     * rule the platform does not have.
+     */
+    const viaMessage = fresh();
+    ensureConversation(viaMessage, 'cust-1', 'slittone');
+    openRequest(viaMessage, 'cust-1');
+    acceptRequest(viaMessage, 'cust-1');
+
+    const viaButton = fresh();
+    ensureConversation(viaButton, 'cust-1', 'slittone');
+    openRequest(viaButton, 'cust-1');
+    acceptRequest(viaButton, 'cust-1');
+
+    expect(requestState(viaMessage, 'cust-1')).toBe(requestState(viaButton, 'cust-1'));
+    expect(requestState(viaMessage, 'cust-1')).toBe('accepted');
   });
 });

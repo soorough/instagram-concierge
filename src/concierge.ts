@@ -56,7 +56,6 @@ export type Handled =
   | { outcome: 'opened'; text: string; turn: TurnResult }
   | { outcome: 'withheld'; reason: string }
   | { outcome: 'window_closed'; reason: string }
-  | { outcome: 'request_pending'; reason: string }
   | { outcome: 'send_failed'; reason: string };
 
 export function createConcierge(deps: ConciergeDeps) {
@@ -70,21 +69,25 @@ export function createConcierge(deps: ConciergeDeps) {
     ensureConversation(deps.db, event.customerId, undefined, event.at);
 
     /**
-     * An unaccepted request is a closed door, and a message arriving through it
-     * does not open it.
+     * Their message is the acceptance, because on this platform it is the only
+     * one there is.
      *
-     * A Private Reply sits in the recipient's message requests until they accept.
-     * Until that happens the thread is not open, so the message is recorded —
-     * it is real, they said it — and no reply is sent. Answering into a request
-     * the Customer has not accepted is the same mistake as answering outside the
-     * 24-hour window: the platform will not deliver it, and pretending otherwise
-     * puts a reply in the transcript that nobody received.
+     * A Private Reply lands in the recipient's message requests, and the
+     * platform raises no event when they accept — there is no field to read and
+     * no webhook to subscribe to. What it does tell us is that they wrote back,
+     * and nobody writes back to a request they did not open. The 24-hour window
+     * opens on that message too, so by the time we see one the thread is
+     * genuinely reachable and refusing to answer would be our own invention
+     * rather than the platform's rule.
+     *
+     * The console's Accept button moves the same state, so the demo can show
+     * the customer's side. This keeps the two in agreement: whichever arrives
+     * first opens the thread, and real traffic never waits on a button that
+     * only exists here.
      */
     if (requestState(deps.db, event.customerId) === 'pending') {
-      appendMessage(deps.db, event.customerId, 'customer', event.text, event.at);
-      const reason = 'the message request has not been accepted yet';
-      log(`holding reply to ${event.customerId}: ${reason}`);
-      return { outcome: 'request_pending', reason };
+      acceptRequest(deps.db, event.customerId);
+      log(`message request accepted by ${event.customerId} — they replied, so the thread is open`);
     }
 
     // History is read before the new message is stored, so the model sees the

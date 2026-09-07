@@ -54,12 +54,22 @@ and the substitution travels with it — the opener is told the profile came fro
 configuration, and unset means nothing is invented at all.
 
 **An Opener lands in message requests, not in a thread.** A Private Reply goes
-to the recipient's requests folder and nothing further reaches them until they
-accept, so "the Opener was sent" and "the Customer is reachable" are different
-claims. The Conversation records which is true. The platform raises no
-acceptance event, and it does not need to: a Customer who writes back has
-accepted by definition, so their first inbound message is the transition. The
-console shows *request pending* until it happens.
+to the recipient's requests folder, and the business gets that one message and
+nothing more until they write back — which is the same rule the 24-hour window
+already encodes, since that window is measured from the Customer's own last
+message. The Conversation records where the Opener is sitting so the console can
+show it.
+
+Worth being exact about what is real here, because the shape invites
+overclaiming. The requests folder is real and the one-message limit is real. The
+*state* is mine: Instagram exposes no request status, raises no event when
+someone accepts, and gives a business no way to observe it. What it gives us is
+their reply, and nobody writes back to a request they did not open — so an
+inbound message accepts, and the console's Accept button moves the same state so
+a demo can show the customer's side. Whichever arrives first opens the thread;
+real traffic never waits on a button that only exists here. The composer is
+locked while a request is pending because Instagram offers no way to write into
+one, but that is a UI honesty, not a platform call.
 
 ## Punted
 
