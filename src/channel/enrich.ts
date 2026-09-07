@@ -184,16 +184,30 @@ export class NoEnricher implements Enricher {
  * and the opener is told plainly that it knows nothing about this person.
  */
 export function demoProfile(): CustomerProfile | undefined {
-  const name = process.env.IG_DEMO_PROFILE_NAME?.trim();
+  const handle = process.env.IG_TESTER_HANDLE?.trim();
+  const name = process.env.IG_DEMO_PROFILE_NAME?.trim() || displayName(handle);
   if (!name) return undefined;
 
   const followers = Number(process.env.IG_DEMO_PROFILE_FOLLOWERS);
   return {
     name,
-    ...(process.env.IG_TESTER_HANDLE ? { username: process.env.IG_TESTER_HANDLE } : {}),
+    ...(handle ? { username: handle } : {}),
     ...(Number.isFinite(followers) ? { followerCount: followers } : {}),
     ...(process.env.IG_DEMO_PROFILE_FOLLOWS
       ? { followsBrand: process.env.IG_DEMO_PROFILE_FOLLOWS === 'true' }
       : {}),
   };
+}
+
+/**
+ * A display name from a handle, the way the brief's own example reads it.
+ *
+ * `@maya.runs` is greeted as "Maya": the leading word, separators dropped,
+ * capitalised. Deriving it beats configuring a name because it stays the real
+ * account's — nothing is invented, and changing IG_TESTER_HANDLE changes the
+ * greeting with it rather than leaving a stale first name behind.
+ */
+function displayName(handle: string | undefined): string | undefined {
+  const first = handle?.split(/[._-]/)[0]?.replace(/[^a-z]/gi, '');
+  return first ? first.charAt(0).toUpperCase() + first.slice(1) : undefined;
 }

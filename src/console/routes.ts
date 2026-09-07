@@ -195,18 +195,26 @@ export function registerConsole(app: FastifyInstance, db: DB, deps: ConsoleDeps)
   app.get('/api/threads', async () => {
     const rows = db
       .prepare(
-        `select c.customer_id, c.username, c.last_seen_at,
+        `select c.customer_id, c.username, c.last_seen_at, c.request_state,
                 (select count(*) from message m where m.customer_id = c.customer_id) as messages
          from conversation c
          order by c.last_seen_at desc`,
       )
-      .all() as { customer_id: string; username: string | null; last_seen_at: number; messages: number }[];
+      .all() as {
+      customer_id: string;
+      username: string | null;
+      last_seen_at: number;
+      messages: number;
+      request_state: string;
+    }[];
 
     return rows.map((r) => ({
       customerId: r.customer_id,
       username: r.username,
       lastSeenAt: r.last_seen_at,
       messages: r.messages,
+      // Pending means the Opener is sitting in their requests, unread.
+      requestState: r.request_state,
     }));
   });
 

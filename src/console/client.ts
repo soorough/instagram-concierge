@@ -24,6 +24,8 @@ type ThreadSummary = {
   username: string | null;
   lastSeenAt: number;
   messages: number;
+  /** 'pending' while the Opener sits unaccepted in their message requests. */
+  requestState?: 'none' | 'pending' | 'accepted';
 };
 
 type ToolCall = { tool: string; ok: boolean; ms: number; args: unknown };
@@ -217,8 +219,16 @@ async function loadThreads(): Promise<void> {
     b.className = 'thread-link';
     b.type = 'button';
     b.setAttribute('aria-current', String(t.customerId === current));
+    const pending = t.requestState === 'pending';
     b.innerHTML = `<b>${t.username ? '@' + t.username : t.customerId}</b>
                    <small>${t.messages} message${t.messages === 1 ? '' : 's'} · ${time(t.lastSeenAt)}</small>`;
+    if (pending) {
+      // The opener has gone out and is waiting in their requests, unaccepted.
+      const tag = document.createElement('small');
+      tag.className = 'pending';
+      tag.textContent = 'request pending';
+      b.append(tag);
+    }
     b.onclick = () => openThread(t.customerId);
     list.append(b);
   }

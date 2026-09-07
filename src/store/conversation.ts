@@ -163,3 +163,39 @@ export function cartIdFor(db: DB, customerId: string): string | undefined {
 export function rememberCart(db: DB, customerId: string, cartId: string): void {
   db.prepare('update conversation set cart_id = ? where customer_id = ?').run(cartId, customerId);
 }
+
+/** Where an Opener landed: never sent, waiting in requests, or accepted. */
+export type RequestState = 'none' | 'pending' | 'accepted';
+
+export function requestState(db: DB, customerId: string): RequestState {
+  const row = db
+    .prepare('select request_state from conversation where customer_id = ?')
+    .get(customerId) as { request_state: RequestState } | undefined;
+  return row?.request_state ?? 'none';
+}
+
+/**
+ * The Opener has gone out and is sitting in their message requests.
+ *
+ * Never downgrades an accepted Conversation. A second comment from someone
+ * already talking to us must not drop them back into the requests folder — the
+ * opener policy withholds for exactly that case, and this has to agree with it.
+ */
+export function openRequest(db: DB, customerId: string): void {
+  db.prepare(
+    `update conversation set request_state = 'pending'
+     where customer_id = ? and request_state != 'accepted'`,
+  ).run(customerId);
+}
+
+/**
+ * They wrote back, which on this platform is what acceptance looks like.
+ *
+ * One-way: going quiet afterwards is not a withdrawal, and treating it as one
+ * would strand a live Conversation in a state that refuses to answer it.
+ */
+export function acceptRequest(db: DB, customerId: string): void {
+  db.prepare(
+    `update conversation set request_state = 'accepted' where customer_id = ?`,
+  ).run(customerId);
+}

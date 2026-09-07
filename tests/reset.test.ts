@@ -28,7 +28,11 @@ describe('reset', () => {
   it('empties every table the console reads, not just the visible ones', () => {
     const db = fresh();
     db.prepare('insert into processed_event values (?,?,?)').run('e1', 'message', 1);
-    db.prepare('insert into conversation values (?,?,?,?,?)').run('c1', 'slittone', 1, 1, null);
+    // Columns named rather than positional: a new column should not break a
+    // test that has nothing to do with it, which is exactly what happened once.
+    db.prepare(
+      'insert into conversation (customer_id, username, created_at, last_seen_at) values (?,?,?,?)',
+    ).run('c1', 'slittone', 1, 1);
     db.prepare('insert into message (customer_id, role, text, at) values (?,?,?,?)')
       .run('c1', 'customer', 'hi', 1);
     db.prepare('insert into opener_decision values (?,?,?,?,?)')

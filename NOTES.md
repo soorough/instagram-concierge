@@ -53,6 +53,14 @@ provided the tradeoff is documented, so `IG_DEMO_PROFILE_NAME` supplies the name
 and the substitution travels with it — the opener is told the profile came from
 configuration, and unset means nothing is invented at all.
 
+**An Opener lands in message requests, not in a thread.** A Private Reply goes
+to the recipient's requests folder and nothing further reaches them until they
+accept, so "the Opener was sent" and "the Customer is reachable" are different
+claims. The Conversation records which is true. The platform raises no
+acceptance event, and it does not need to: a Customer who writes back has
+accepted by definition, so their first inbound message is the transition. The
+console shows *request pending* until it happens.
+
 ## Punted
 
 Profile enrichment succeeding — the fetch is attempted (the brief's pipeline has

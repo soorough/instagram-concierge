@@ -50,6 +50,11 @@
   .thread-link[aria-current="true"] { background: #1c1c1c; border-left-color: var(--claret); }
   .thread-link b { display: block; font-weight: 500; }
   .thread-link small { color: var(--ink-dim); font-size: 12px; }
+  /* The opener is in their requests folder and has not been accepted. */
+  .thread-link small.pending {
+    color: var(--claret); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10.5px; letter-spacing: .04em;
+  }
 
   .withheld-group { margin-top: 22px; border-top: 1px solid var(--line); padding: 14px 18px; }
   .withheld-group > p { margin: 0 0 10px; color: var(--ink-dim); font-size: 12px; }

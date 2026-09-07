@@ -93,6 +93,23 @@ const SCHEMA = `
 
 export function migrate(db: DB): void {
   db.exec(SCHEMA);
+
+  /**
+   * Columns added after the first release.
+   *
+   * `create table if not exists` does nothing to a table that already exists,
+   * so a database created before this column simply would not have it — and the
+   * failure lands at query time, on a deployed instance, rather than at boot.
+   * Adding it here keeps an existing volume working across a redeploy.
+   */
+  const columns = (db.prepare('pragma table_info(conversation)').all() as { name: string }[]).map(
+    (c) => c.name,
+  );
+  if (!columns.includes('request_state')) {
+    db.exec(
+      `alter table conversation add column request_state text not null default 'none'`,
+    );
+  }
 }
 
 function openDb(path?: string): DB {

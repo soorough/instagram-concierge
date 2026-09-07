@@ -12,9 +12,12 @@ import {
   type OpenerDecision,
 } from './opener/policy.ts';
 import {
+  acceptRequest,
   appendMessage,
   cartIdFor,
   ensureConversation,
+  openRequest,
+  requestState,
   hasConversation,
   historyFor,
   recordToolCall,
@@ -64,6 +67,16 @@ export function createConcierge(deps: ConciergeDeps) {
 
   async function handleMessage(event: InboundMessage): Promise<Handled> {
     ensureConversation(deps.db, event.customerId, undefined, event.at);
+
+    /**
+     * Their reply is the acceptance. The platform raises no event for it, and a
+     * Customer who writes back has accepted by definition — so this is the only
+     * signal there is, and it is a good one.
+     */
+    if (requestState(deps.db, event.customerId) === 'pending') {
+      acceptRequest(deps.db, event.customerId);
+      log(`message request accepted by ${event.customerId} — the thread is open`);
+    }
 
     // History is read before the new message is stored, so the model sees the
     // Conversation as it stood when the Customer wrote.
@@ -179,6 +192,15 @@ export function createConcierge(deps: ConciergeDeps) {
     ensureConversation(deps.db, event.customerId, event.username, event.at);
     appendMessage(deps.db, event.customerId, 'customer', event.text, event.at);
     appendMessage(deps.db, event.customerId, 'concierge', turn.reply);
+
+    /**
+     * A Private Reply does not land in a thread — it lands in their message
+     * requests, and nothing further reaches them until they accept. Recording
+     * that keeps "the Opener was sent" from being mistaken for "the Customer is
+     * reachable", which are different claims and only one of them is true here.
+     */
+    openRequest(deps.db, event.customerId);
+    log(`message request pending for ${event.customerId} — awaiting their reply`);
 
     return { outcome: 'opened', text: turn.reply, turn };
   }
