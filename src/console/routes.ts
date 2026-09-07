@@ -64,6 +64,8 @@ export type ConsoleDeps = {
    * the Customer on the other end of the demo.
    */
   brandName: string;
+  /** Where the brand's rules came from, so a deploy can prove they arrived. */
+  brandRules: 'file' | 'env' | 'none';
   accountHandle: string;
   testerHandle: string;
   testerCustomerId: string;
@@ -109,6 +111,8 @@ export function registerConsole(app: FastifyInstance, db: DB, deps: ConsoleDeps)
     ok: true,
     dispatch: process.env.DISPATCH === 'live' ? 'live' : 'recording',
     simulation: simulationDisabledReason() === undefined,
+    // 'none' means the shipping restriction is not in force. Visible, not silent.
+    brandRules: deps.brandRules,
   }));
 
   app.get('/api/identity', async () => ({

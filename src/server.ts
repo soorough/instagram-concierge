@@ -49,6 +49,12 @@ const mcp = new McpClient(config.shopDomain());
  * rather than a matter of tone. `BRAND_INSTRUCTIONS` still overrides it.
  */
 const brand = loadBrand();
+log(
+  brand.source === 'none'
+    ? `brand ${brand.name}: NO RULES LOADED — config/brand.json not found and BRAND_INSTRUCTIONS unset. ` +
+        'The shipping restriction is not in force.'
+    : `brand ${brand.name}: rules from ${brand.source === 'file' ? 'config/brand.json' : 'BRAND_INSTRUCTIONS'}`,
+);
 
 const tools = await mcp.discover();
 log(`store ${config.shopDomain()} offers: ${tools.join(', ') || '(nothing — is it reachable?)'}`);
@@ -108,6 +114,7 @@ registerConsole(app, db, {
   ...(process.env.IG_MEDIA_ID ? { mediaId: process.env.IG_MEDIA_ID } : {}),
   endpoint: `http://127.0.0.1:${config.port()}/webhooks/instagram`,
   brandName: brand.name,
+  brandRules: brand.source,
   accountHandle: process.env.IG_ACCOUNT_HANDLE ?? 'daakiyah',
   testerHandle: process.env.IG_TESTER_HANDLE ?? 'slittone',
   testerCustomerId: process.env.IG_TESTER_ID ?? 'slittone-1',

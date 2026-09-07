@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { composeInstructions, type BrandConfig } from '../src/config/brand.ts';
+import { composeInstructions, loadBrand, type BrandConfig } from '../src/config/brand.ts';
+import { afterEach } from 'vitest';
 
 /**
  * Brand config is *rules from the operator* — the same trust level as the rest
@@ -51,5 +52,42 @@ describe('brand config', () => {
     // A typo in a compliance list must fail loudly at boot, not ship as "ZZ".
     expect(() => composeInstructions({ ...brand, shipping: { prohibitedUsStates: ['ZZ'] } }))
       .toThrow(/ZZ/);
+  });
+});
+
+/**
+ * The loader reads a *relative* path and swallows a read failure, which is right
+ * — a deployment configured entirely through the environment is valid. But the
+ * same silence covers a genuine mistake: a working directory that is not the
+ * repository root means the file is not found, `instructions` is `undefined`,
+ * and the shipping restriction disappears with no error anywhere.
+ *
+ * The rule it carries is the one with legal weight, so its absence must be
+ * loud. Boot says which source was used, and says plainly when there is none.
+ */
+describe('where the rules came from', () => {
+  const before = process.env.BRAND_INSTRUCTIONS;
+  afterEach(() => {
+    if (before === undefined) delete process.env.BRAND_INSTRUCTIONS;
+    else process.env.BRAND_INSTRUCTIONS = before;
+  });
+
+  it('reports the file when it is found', () => {
+    delete process.env.BRAND_INSTRUCTIONS;
+    const loaded = loadBrand('./config/brand.json');
+    expect(loaded.source).toBe('file');
+    expect(loaded.instructions).toContain('Utah');
+  });
+
+  it('reports the environment when it overrides the file', () => {
+    process.env.BRAND_INSTRUCTIONS = 'Say less.';
+    expect(loadBrand('./config/brand.json').source).toBe('env');
+  });
+
+  it('reports having no rules at all, rather than pretending', () => {
+    delete process.env.BRAND_INSTRUCTIONS;
+    const loaded = loadBrand('./config/does-not-exist.json');
+    expect(loaded.source).toBe('none');
+    expect(loaded.instructions).toBeUndefined();
   });
 });

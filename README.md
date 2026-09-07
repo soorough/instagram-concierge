@@ -86,7 +86,7 @@ demo-only branch, and nothing is written behind the system's back.
 ```bash
 cp .env.example .env    # every value is explained in the file
 npm install
-npm test                # 142 tests, no credentials needed, ~2s
+npm test                # 145 tests, no credentials needed, ~2s
 npm start               # listens on :8787
 ```
 
@@ -509,7 +509,7 @@ and nothing else changes.
 ## Tests
 
 ```bash
-npm test          # 142 tests, no credentials needed
+npm test          # 145 tests, no credentials needed
 npm run evals     # 10 behavioural cases against the real model and store
 npm run typecheck
 ```

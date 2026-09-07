@@ -97,7 +97,9 @@ export function composeInstructions(brand: BrandConfig): string {
  * `BRAND_INSTRUCTIONS` still wins when set, so an operator can override without
  * editing a file and nothing that already relied on it breaks.
  */
-export function loadBrand(path = './config/brand.json'): { name: string; instructions?: string } {
+export function loadBrand(
+  path = './config/brand.json',
+): { name: string; instructions?: string; source: 'file' | 'env' | 'none' } {
   const envInstructions = process.env.BRAND_INSTRUCTIONS?.trim();
 
   let file: BrandConfig | undefined;
@@ -111,5 +113,16 @@ export function loadBrand(path = './config/brand.json'): { name: string; instruc
   const name = process.env.BRAND_NAME ?? file?.name ?? 'ONEHOPE';
   const instructions = envInstructions || (file ? composeInstructions(file) : undefined);
 
-  return { name, ...(instructions ? { instructions } : {}) };
+  /**
+   * Which source won, so a deployment can prove its rules arrived.
+   *
+   * The path above is relative, and a working directory that is not the
+   * repository root reads as "no file" — identical, from in here, to a
+   * deliberate env-only setup. That silence would take the shipping
+   * restriction with it, which is the one rule that carries legal weight, so
+   * the caller is told and boot logs it.
+   */
+  const source = envInstructions ? 'env' : file ? 'file' : 'none';
+
+  return { name, source, ...(instructions ? { instructions } : {}) };
 }
