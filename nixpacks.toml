@@ -1,6 +1,6 @@
-# better-sqlite3 ships prebuilt binaries for linux-x64 on Node 20, so this toolchain is a
-# fallback for the case where no prebuild matches rather than the normal path. python3 and
-# gcc are cheap to keep and turn a hard build failure into a slower build.
+# Node is pinned in package.json engines as well, so the build image and the run image
+# agree. That agreement is the whole point: better-sqlite3 is a native module and its
+# prebuilt binary is locked to one Node ABI.
 [phases.setup]
 nixPkgs = ["nodejs_20", "python3", "gcc", "gnumake"]
 
@@ -8,9 +8,17 @@ nixPkgs = ["nodejs_20", "python3", "gcc", "gnumake"]
 [phases.install]
 cmds = ["npm ci --include=dev --no-audit --no-fund"]
 
-# TypeScript is compiled here rather than at boot. Running `tsx` in production shipped a
-# transpiler to the server and did the whole compile inside the container's first seconds,
-# which is both slower and one more thing that can fail where nothing is watching.
-# `npm start` is now plain `node dist/server.js`.
+# better-sqlite3 is rebuilt from source rather than trusting the downloaded prebuild.
+# A prebuild compiled for a different Node ABI does not fail to load politely — it
+# segfaults, which kills the process before any JavaScript runs and therefore before
+# anything can be logged. That produced a restart loop whose only visible content was
+# npm echoing the start script. Compiling here costs a slower build and removes the
+# entire class of failure.
+#
+# TypeScript is compiled here too: running a transpiler in production is both slower
+# and one more thing that can fail where nothing is watching.
 [phases.build]
-cmds = ["npm run build"]
+cmds = [
+  "npm rebuild better-sqlite3 --build-from-source",
+  "npm run build",
+]
