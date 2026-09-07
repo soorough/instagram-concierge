@@ -148,8 +148,24 @@ export function registerConsole(app: FastifyInstance, db: DB, deps: ConsoleDeps)
     return { cleared: true };
   });
 
+  /**
+   * The page is read from disk on every request and told not to be cached.
+   *
+   * Without that header a browser caches it heuristically, and a deploy that
+   * changes the console silently does not reach anyone who has opened it
+   * before — they keep running the previous build against the current server.
+   * That is a confusing failure to be on the wrong side of: the password is
+   * right, the API is right, and the page still behaves as though neither is,
+   * because the page is older than both. It cost a round of debugging here.
+   *
+   * It is one small HTML document on a demo console, so re-reading it per
+   * request costs nothing worth measuring.
+   */
   app.get('/', async (_req, reply) =>
-    reply.type('text/html').send(readFileSync(join(here, 'index.html'), 'utf8')),
+    reply
+      .type('text/html')
+      .header('cache-control', 'no-store, must-revalidate')
+      .send(readFileSync(join(here, 'index.html'), 'utf8')),
   );
 
   app.get('/api/activity', async () => recent());
