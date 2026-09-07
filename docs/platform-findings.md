@@ -162,6 +162,22 @@ route to the data was tried.
 
 `comments_count: 1` alongside an empty `comments` edge is the clearest single
 signal: the platform confirms the comment exists and declines to return it.
+
+**Retested against a permanent endpoint, and the line moved.** Every earlier
+attempt ran behind a temporary tunnel, which leaves "zero POSTs" ambiguous — a
+dead tunnel and a withholding platform look identical from here. Deployed to a
+stable HTTPS URL, the dashboard's own test deliveries for both `comments` and
+`messages` arrive, verify against the real app secret, and are then refused by
+the brand-account assertion, because Meta's samples carry `entry[].id` of `0`:
+
+    ignored — delivery for account 0 is not ours
+
+So the transport is not the constraint. The endpoint is reachable, the callback
+verifies, the subscription is live on both fields, and Meta will POST to it. What
+does not arrive is real user activity, and the dashboard states why in one line
+above the field list: *to receive webhooks, your app must be in published state*.
+That is a far stronger claim than the original one — the boundary is located
+rather than merely encountered.
 Metadata about our own account is visible; anything belonging to another user
 is not.
 
