@@ -40,7 +40,7 @@ export type ToolOutcome = {
   cart?: { id: string; checkoutUrl: string };
 };
 
-export const TOOL_SPECS: ToolSpec[] = [
+const TOOL_SPECS: ToolSpec[] = [
   {
     name: 'search_catalog',
     description:

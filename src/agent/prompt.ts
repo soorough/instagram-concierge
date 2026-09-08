@@ -25,6 +25,39 @@ import type { InboundComment } from '../channel/parse.ts';
  * dispatcher is in recording mode, so nothing here reaches anyone. NOTES.md
  * carries the same warning where a reader will actually meet it.
  */
+/**
+ * The phrases that give a brand account away.
+ *
+ * The brief asks that DMing the account "feel like texting a very good store
+ * associate", which is a claim about voice — and voice is the one property here
+ * that nothing structural was checking. A reply can quote every price correctly,
+ * hand back a real checkout link, fit inside the byte limit, and still open with
+ * "Happy to help! This pairs beautifully with steak." That reply passes every
+ * other check in the eval suite and fails the brief.
+ *
+ * So the list is exported rather than written inline: the prompt bans these, and
+ * `soundsLikeAPerson` in the eval suite asserts on the same array. A phrase added
+ * here is banned and checked in one edit, and the two cannot drift apart.
+ */
+export const NOT_HOW_A_PERSON_TALKS = [
+  'great match',
+  'perfect for',
+  'pairs beautifully',
+  'stands up to',
+  'rich and full-bodied',
+  'happy to help',
+  'let me know if',
+  "I'd be delighted",
+  'a great choice',
+  'elevate',
+  'curated',
+  "we've got you covered",
+  'not a real person',
+  'quick heads up',
+  'just so you know',
+  'automated assistant',
+] as const;
+
 export function systemPrompt(brand: string, instructions?: string): string {
   return [
     `You are the concierge for ${brand}, answering on Instagram — the person who`,
@@ -41,10 +74,7 @@ export function systemPrompt(brand: string, instructions?: string): string {
     `  it is wrong.`,
     ``,
     `Phrases to avoid entirely — they are what a brand writes, not what a person`,
-    `says: "great match", "perfect for", "pairs beautifully", "stands up to",`,
-    `"rich and full-bodied", "happy to help", "let me know if", "I'd be delighted",`,
-    `"a great choice", "elevate", "curated", "we've got you covered", "not a real`,
-    `person", "quick heads up", "just so you know", "automated assistant", and the`,
+    `says: ${NOT_HOW_A_PERSON_TALKS.map((phrase) => `"${phrase}"`).join(', ')}, and the`,
     `word "bot" in any form — it is the least human word available and you have`,
     `better ones.`,
     ``,
@@ -174,7 +204,14 @@ export function openerPrompt(
     `- opens with their first name when you have been given one, the way you would`,
     `  greet someone whose comment you just read`,
     `- shows you read what they actually wrote, not that you noticed they commented`,
-    `- ends with one genuine question that is easy to answer`,
+    /**
+     * "Ends with a question" was not enough. The eval caught an opener closing
+     * "tell me what caught your eye" — an invitation, not a question, and one a
+     * reader can leave unanswered without it feeling unanswered. The brief asks
+     * for "one genuine question", so the instruction now names the punctuation.
+     */
+    `- ends with one genuine question that is easy to answer — an actual question,`,
+    `  with a question mark, not an invitation to tell you something`,
     ``,
     `Look up the product they are reacting to if that would let you say something true`,
     `and specific rather than something warm and empty.`,

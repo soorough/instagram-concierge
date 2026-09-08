@@ -183,7 +183,7 @@ export class NoEnricher implements Enricher {
  * does not opt in behaves exactly as it did: the fetch is attempted, it fails,
  * and the opener is told plainly that it knows nothing about this person.
  */
-export function demoProfile(): CustomerProfile | undefined {
+function demoProfile(): CustomerProfile | undefined {
   const handle = process.env.IG_TESTER_HANDLE?.trim();
   /**
    * The name is configured, never derived.

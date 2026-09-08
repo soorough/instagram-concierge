@@ -226,7 +226,7 @@ export function describeLine(line: string): Omit<Activity, 'at'> {
  * concern in one file: the Receiver stays a Receiver, and nothing in the hot
  * path knows a console exists.
  */
-export function classify(line: string): Activity['kind'] {
+function classify(line: string): Activity['kind'] {
   if (line.includes('bad signature')) return 'rejected';
   if (line.includes('already processed')) return 'duplicate';
   if (line.startsWith('ignored:')) return 'ignored';
