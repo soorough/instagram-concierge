@@ -184,7 +184,7 @@ published, and publishing means App Review and Business Verification — which t
 brief excludes. So I feed the events in myself, over the same signed HTTP, at the
 same endpoint. That one substitution is the only part that isn't real.
 
-| | Real? |
+| Layer | Real? |
 |---|---|
 | Meta → our endpoint | yes, Meta issues the POST |
 | Signature verification | yes, against Meta's own bytes |
