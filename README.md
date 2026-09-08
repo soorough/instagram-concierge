@@ -148,6 +148,21 @@ no branch on message content anywhere in `loop.ts`. What the loop owns is the
 budget: three calls a turn, executed one at a time so it learns what the first
 returned before spending the second, and on the last pass it's offered no tools at
 all — which forces an answer instead of a request the loop could only refuse.
+Spending the whole budget without resolving produces an honest escalation to a
+human, never a guess.
+
+**The opener lands in a message request, not a thread.** A private reply goes to
+the recipient's requests folder, and the brand gets that one message and nothing
+more until they write back. The console shows the pending state and a customer
+side that Instagram normally hides.
+
+Worth being exact, because the shape invites overclaiming. The requests folder
+and the one-message limit are Instagram's. The *state* is mine: the API exposes
+no request status, raises no event when someone accepts, and gives a business no
+way to observe it. What it does give you is their reply — and nobody writes back
+to a request they didn't open — so an inbound message accepts it. The Accept
+button moves the same state so a demo can show the other side; real traffic never
+waits on it.
 
 **Two clocks, from different events.** Seven days from a comment, for that one
 private reply. Twenty-four hours from the customer's *last message* — measured
