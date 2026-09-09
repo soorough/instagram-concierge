@@ -137,3 +137,66 @@ describe('elements that toggle hidden', () => {
     expect(offenders, offenders.join('; ')).toEqual([]);
   });
 });
+
+/**
+ * The panes must be bounded, or nothing inside them can scroll.
+ *
+ * This is the second layout defect in this file with the same shape, and jsdom
+ * cannot catch either — it does not lay anything out, so a pane that grows to
+ * ten thousand pixels reports exactly what a correct one does.
+ *
+ * The bug: `.shell` and `.thread` both set `min-height: 100vh`, which is a floor
+ * and not a ceiling. The ledger records every delivery and grows all evening, so
+ * the rail grew, the shell grew with it, and the composer — which follows the
+ * log in the flow — scrolled off the bottom mid-demo. `overflow-y: auto` on the
+ * log did nothing, because a flex child only scrolls when its container has a
+ * height to be constrained by.
+ *
+ * So what is asserted is the invariant that actually failed: the shell fixes a
+ * height rather than a minimum, and every pane that holds unbounded content can
+ * both shrink and scroll.
+ */
+describe('the layout', () => {
+  const styles = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>'));
+
+  /** The body of the first `selector { … }` rule outside any media query. */
+  const ruleFor = (selector: string): string => {
+    const desktop = styles.slice(0, styles.indexOf('@media'));
+    const m = new RegExp(`\\${selector}\\s*\\{([^}]*)\\}`).exec(desktop);
+    expect(m, `no rule for ${selector}`).not.toBeNull();
+    return m![1]!;
+  };
+
+  it('gives the shell a fixed height, not a floor it can grow past', () => {
+    const shell = ruleFor('.shell');
+    expect(shell, '.shell sets min-height, so both panes grow with their content').not.toMatch(
+      /min-height\s*:\s*100/,
+    );
+    expect(shell, '.shell has no bounded height, so nothing inside it can scroll').toMatch(
+      /(^|[^-])height\s*:\s*100(vh|dvh)/,
+    );
+  });
+
+  it('lets the ledger scroll itself rather than pushing the page down', () => {
+    // The rail holds the activity feed, which grows for as long as the demo runs.
+    const rail = ruleFor('.rail');
+    expect(rail, '.rail must scroll its own overflow').toMatch(/overflow-y\s*:\s*auto/);
+    expect(rail, '.rail must be allowed to shrink below its content').toMatch(/min-height\s*:\s*0/);
+  });
+
+  it('keeps the composer in view by bounding the thread pane', () => {
+    const thread = ruleFor('.thread');
+    expect(thread, '.thread grows past the viewport, taking the composer with it').not.toMatch(
+      /min-height\s*:\s*100/,
+    );
+    expect(thread).toMatch(/min-height\s*:\s*0/);
+  });
+
+  it('still scrolls as one page when the panes stack', () => {
+    // Two panes cannot each own a viewport once they are on top of each other.
+    const mobile = styles.slice(styles.indexOf('@media (max-width: 920px)'));
+    expect(mobile, 'the stacked layout inherits a fixed height it cannot use').toMatch(
+      /height\s*:\s*auto/,
+    );
+  });
+});

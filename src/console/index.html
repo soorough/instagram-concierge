@@ -31,10 +31,34 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  .shell { display: grid; grid-template-columns: 320px minmax(0, 1fr); min-height: 100vh; }
+  /*
+   * The shell is exactly one viewport tall, and that is load-bearing.
+   *
+   * It was `min-height: 100vh`, which is a floor rather than a ceiling — so
+   * both panes grew as their contents did. The ledger records every delivery,
+   * so it grows all evening; the page grew with it, and the composer, which
+   * sits after the log in the flow, scrolled off the bottom of a demo.
+   *
+   * `overflow-y: auto` on the log could not help. A flex or grid child only
+   * scrolls when its container has a height to be constrained by, and this one
+   * had none. So the height is fixed here, `min-height: 0` lets the children
+   * shrink below their content, and each pane scrolls itself.
+   *
+   * `dvh` second, so browsers that have it use the height that accounts for a
+   * collapsing mobile toolbar, and the rest fall back to `vh`.
+   */
+  .shell {
+    display: grid; grid-template-columns: 320px minmax(0, 1fr);
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
 
   /* ── conversation list ─────────────────────────────────────────────── */
-  .rail { border-right: 1px solid var(--line); background: var(--surface); }
+  .rail {
+    border-right: 1px solid var(--line); background: var(--surface);
+    min-height: 0; overflow-y: auto;
+  }
   .rail h1 {
     margin: 0; padding: 20px 18px 14px;
     font-size: 17px; font-weight: 600; letter-spacing: -0.01em;
@@ -96,7 +120,8 @@
     display: flex;
     flex-direction: column;
     min-width: 0;
-    min-height: 100vh;
+    height: 100%;
+    min-height: 0;
   }
   .thread .log { flex: 1; min-height: 0; }
   .thread header {
@@ -261,8 +286,17 @@
   }
 
   @media (max-width: 920px) {
-    .shell { grid-template-columns: 1fr; }
-    .rail { border-right: 0; border-bottom: 1px solid var(--line); }
+    /*
+     * Stacked, the two panes cannot both own a viewport, so the page scrolls
+     * as one — which is the right behaviour on a phone and the wrong one on a
+     * desktop, where the composer must stay put.
+     */
+    .shell {
+      grid-template-columns: 1fr;
+      height: auto; overflow: visible;
+    }
+    .rail { border-right: 0; border-bottom: 1px solid var(--line); overflow-y: visible; }
+    .thread { height: auto; min-height: 100vh; }
     .turn { grid-template-columns: 1fr; gap: 4px; }
     .trace { padding-bottom: 10px; }
   }
