@@ -200,3 +200,72 @@ describe('the layout', () => {
     );
   });
 });
+
+/**
+ * One action at a time, and only its own button looks like it.
+ *
+ * Pressing any control used to disable all seven by looping over them, which
+ * left nothing to distinguish the one doing the work — so the console read as
+ * though every button had been pressed at once. Behind that sat the worse
+ * defect: `openThread` polls, every poll calls `refreshComposer`, and
+ * `refreshComposer` re-derived the buttons from the gates alone. A poll landing
+ * mid-request re-enabled everything and let a second one through.
+ *
+ * jsdom cannot run the client, so these assert on the source and the
+ * stylesheet: that the busy state is a gate the refresh reads, that every
+ * action names the button it belongs to, and that busy and unavailable resolve
+ * to different pixels.
+ */
+describe('one action at a time', () => {
+  const client = readFileSync(new URL('../src/console/client.ts', import.meta.url), 'utf8');
+  const styles = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>'));
+
+  it('makes the in-flight action a gate the refresh reads', () => {
+    // Not a local in `fire` — a poll calling refreshComposer has to see it.
+    expect(client).toMatch(/let busyWith: HTMLElement \| null = null/);
+    const refresh = /function refreshComposer[\s\S]*?\n}/.exec(client)?.[0] ?? '';
+    // Mentioning it is not enough — the readiness expression has to include it,
+    // or a poll re-enables every button while a request is still open.
+    const ready = /const ready = ([^;]+);/.exec(refresh)?.[1] ?? '';
+    expect(ready, `refreshComposer can re-enable buttons mid-request: ${ready}`).toMatch(
+      /!working|busyWith === null/,
+    );
+  });
+
+  it('routes every action through the one wrapper', () => {
+    // A handler that disables buttons by hand is a handler that can forget to
+    // re-enable them. `whileBusy` has the only finally block.
+    expect(client).not.toMatch(/querySelectorAll<HTMLButtonElement>\('\.composer button'\)\)\s*b\.disabled = true/);
+    const wrapped = [...client.matchAll(/whileBusy\(\$\('([a-z]+)'\)/g)].map((m) => m[1]);
+    for (const id of ['accept', 'clear']) {
+      expect(wrapped, `#${id} runs unguarded — it can be double-clicked`).toContain(id);
+    }
+  });
+
+  /**
+   * The trigger is an element, not the name of one.
+   *
+   * An earlier version passed the button's id as a string, which meant a typo
+   * resolved at runtime and only when that button was pressed. Taking
+   * `HTMLElement` moves it to the compiler, and `$()` throws at the call site
+   * if the id is wrong — so there is nothing left here for a test to check
+   * that `tsc` does not already catch.
+   */
+  it('takes the element rather than its name', () => {
+    expect(client).toMatch(/trigger: HTMLElement/);
+    expect(client, 'ids as strings drift from the markup silently').not.toMatch(
+      /whileBusy\('/,
+    );
+  });
+
+  it('draws busy differently from unavailable', () => {
+    // Both are disabled. Without this rule the dimming wins and they look alike.
+    expect(styles).toMatch(/button:disabled\[aria-busy="true"\][\s\S]{0,80}opacity:\s*1/);
+    expect(styles, 'nothing marks which button is working').toMatch(/aria-busy="true"\]::after/);
+  });
+
+  it('keeps the spinner visible when motion is reduced', () => {
+    const reduced = styles.slice(styles.indexOf('prefers-reduced-motion'));
+    expect(reduced, 'the spinner should stop, not disappear').toMatch(/aria-busy[\s\S]{0,120}animation:\s*none/);
+  });
+});

@@ -259,6 +259,38 @@
   .composer button:hover { filter: brightness(1.25); }
   .composer button:disabled { opacity: .4; cursor: default; }
 
+  /*
+   * Working, as opposed to merely unavailable.
+   *
+   * Both states disable the button, and for a while both looked identical — so
+   * pressing one control greyed out all seven and the console read as though
+   * every one of them had been pressed. The one doing the work keeps its
+   * colour and grows a spinner; the others stay dimmed. Written against
+   * `aria-busy` rather than a class, because the attribute is what a screen
+   * reader announces and a second source of truth would drift from it.
+   *
+   * The `:disabled` qualifier is specificity, not decoration: the rule above
+   * also matches, and without it the dimming wins.
+   */
+  .composer button:disabled[aria-busy="true"],
+  .request button:disabled[aria-busy="true"] {
+    opacity: 1;
+    cursor: progress;
+  }
+  .composer button[aria-busy="true"]::after,
+  .request button[aria-busy="true"]::after {
+    content: "";
+    display: inline-block;
+    width: 9px; height: 9px;
+    margin-left: 7px;
+    vertical-align: -1px;
+    border: 1.5px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
   .extras {
     display: flex; gap: 8px; flex-wrap: wrap; max-width: 860px;
     margin: 10px auto 0; align-items: center;
@@ -300,7 +332,12 @@
     .turn { grid-template-columns: 1fr; gap: 4px; }
     .trace { padding-bottom: 10px; }
   }
-  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+    /* The spinner still has to read as "working", so it stays and stops. */
+    .composer button[aria-busy="true"]::after,
+    .request button[aria-busy="true"]::after { animation: none; }
+  }
 
   /*
    * The unlock screen.

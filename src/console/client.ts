@@ -446,48 +446,105 @@ const gates = { identity: false, simulate: false, reset: false };
  */
 let requestPending = false;
 
+/**
+ * The one action in flight, by the id of the button that started it.
+ *
+ * This is a gate rather than a local variable inside `fire`, for two reasons.
+ *
+ * A send used to disable every button by looping over them, which left nothing
+ * to say *which* one was working — so all seven greyed out together and the
+ * console read as though every button had been pressed. Only the one you
+ * clicked should look busy; the rest are merely unavailable, and those are
+ * different states that deserve different pixels.
+ *
+ * The second reason is the real defect. `openThread` polls, and every poll
+ * calls `refreshComposer`, which re-enabled the buttons from `gates` alone —
+ * so a poll landing mid-request un-disabled everything and a second click went
+ * through while the first was still open. Anything that re-derives the
+ * composer's state has to know an action is running, which means the state has
+ * to live here and not in a closure.
+ */
+let busyWith: HTMLElement | null = null;
+
 function refreshComposer(reason?: string): void {
-  const ready = gates.identity && gates.simulate && !requestPending;
+  const working = busyWith !== null;
+  const ready = gates.identity && gates.simulate && !requestPending && !working;
+
   for (const el of document.querySelectorAll<HTMLButtonElement | HTMLInputElement>(
     '.composer button, .composer input',
   )) {
     el.disabled = !ready;
   }
+  // The banner's button is outside the composer and needs the same lock.
+  $<HTMLButtonElement>('accept').disabled = working;
+
   if (ready) {
     $<HTMLButtonElement>('redeliver').disabled = !lastEventId;
     // Never re-enabled by a send finishing; only its own check clears it.
     $<HTMLButtonElement>('clear').disabled = !gates.reset;
   }
-  if (!ready && reason) result(reason, true);
+  // While an action runs, the result line belongs to it — not to an
+  // explanation of why the buttons are currently off.
+  if (!ready && reason && !working) result(reason, true);
+}
+
+/**
+ * Runs one action, with its own button marked as working.
+ *
+ * Everything funnels through here — the simulated deliveries, accepting the
+ * request, clearing — so there is exactly one place that decides what "busy"
+ * looks like, and no handler can forget to re-enable what it disabled. The
+ * early return makes a second click during a request a no-op rather than a
+ * second request, which matters most for the Opener: a duplicate there spends
+ * a message the comment can never earn again.
+ */
+async function whileBusy<T>(
+  trigger: HTMLElement,
+  label: string,
+  work: () => Promise<T>,
+): Promise<T | void> {
+  if (busyWith !== null) return;
+
+  busyWith = trigger;
+  trigger.setAttribute('aria-busy', 'true');
+  refreshComposer();
+  result(`${label}…`);
+
+  try {
+    return await work();
+  } finally {
+    trigger.removeAttribute('aria-busy');
+    busyWith = null;
+    refreshComposer();
+  }
 }
 
 // Locked until we know who we are.
 refreshComposer();
 
 
-async function fire(payload: SimulatePayload, label: string): Promise<void> {
-  for (const b of document.querySelectorAll<HTMLButtonElement>('.composer button')) b.disabled = true;
-  result(`${label}…`);
-  try {
-    const res = await fetch('/api/simulate', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      result(data.error ?? 'refused', true);
-    } else {
-      if (payload.kind !== 'forged') lastEventId = data.eventId;
-      result(`${data.status} ${data.body}`, data.status !== 200);
+async function fire(payload: SimulatePayload, label: string, trigger: HTMLElement): Promise<void> {
+  await whileBusy(trigger, label, async () => {
+    try {
+      const res = await fetch('/api/simulate', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        result(data.error ?? 'refused', true);
+      } else {
+        if (payload.kind !== 'forged') lastEventId = data.eventId;
+        result(`${data.status} ${data.body}`, data.status !== 200);
+      }
+    } catch (e) {
+      result(String((e as Error).message), true);
     }
-  } catch (e) {
-    result(String((e as Error).message), true);
-  } finally {
-    refreshComposer();
-    // The reply takes a few seconds; poll a little more eagerly for a moment.
-    for (const wait of [1200, 3000, 6000, 9000, 13000]) setTimeout(() => { loadThreads(); loadActivity(); }, wait);
-  }
+  });
+
+  // The reply takes a few seconds; poll a little more eagerly for a moment.
+  for (const wait of [1200, 3000, 6000, 9000, 13000]) setTimeout(() => { loadThreads(); loadActivity(); }, wait);
 }
 
 $('composer').addEventListener('submit', (e) => {
@@ -497,7 +554,7 @@ $('composer').addEventListener('submit', (e) => {
   $<HTMLInputElement>('text').value = '';
   // Set after the send, not before: pointing at a thread that does not exist
   // yet is what made the first message look like it had vanished.
-  fire({ kind: 'message', text, customerId: CUSTOMER }, 'sending message').then(() => {
+  fire({ kind: 'message', text, customerId: CUSTOMER }, 'sending message', $('send')).then(() => {
     current = CUSTOMER;
   });
 });
@@ -505,13 +562,13 @@ $('composer').addEventListener('submit', (e) => {
 $('comment').onclick = () => {
   const text = $<HTMLInputElement>('text').value.trim() || 'obsessed with this red blend 😍 is it good with steak?';
   $<HTMLInputElement>('text').value = '';
-  fire({ kind: 'comment', text, customerId: CUSTOMER, username: HANDLE }, 'leaving comment').then(() => {
+  fire({ kind: 'comment', text, customerId: CUSTOMER, username: HANDLE }, 'leaving comment', $('comment')).then(() => {
     current = CUSTOMER;
   });
 };
 
 $('noise').onclick = () =>
-  fire({ kind: 'comment', text: '🔥🔥🔥', customerId: 'noise-' + Date.now() }, 'leaving comment');
+  fire({ kind: 'comment', text: '🔥🔥🔥', customerId: 'noise-' + Date.now() }, 'leaving comment', $('noise'));
 
 /**
  * The platform's two clocks, made clickable.
@@ -530,6 +587,7 @@ $('stale').onclick = () =>
   fire(
     { kind: 'message', text: 'still thinking about that cabernet', customerId: CUSTOMER, ageHours: 25 },
     'sending a 25-hour-old message',
+    $('stale'),
   ).then(() => { current = CUSTOMER; });
 
 // Eight days: past the seven the platform allows, so the Opener is withheld
@@ -544,13 +602,18 @@ $('oldcomment').onclick = () =>
       ageHours: 8 * 24,
     },
     'leaving an 8-day-old comment',
+    $('oldcomment'),
   );
 
 // Same event id — Meta redelivering. Should be accepted: 0.
 $('redeliver').onclick = () =>
-  fire({ kind: 'message', text: '(redelivery)', eventId: lastEventId, customerId: CUSTOMER }, 'redelivering');
+  fire(
+    { kind: 'message', text: '(redelivery)', eventId: lastEventId, customerId: CUSTOMER },
+    'redelivering',
+    $('redeliver'),
+  );
 
-$('forge').onclick = () => fire({ kind: 'forged' }, 'sending forged signature');
+$('forge').onclick = () => fire({ kind: 'forged' }, 'sending forged signature', $('forge'));
 
 /**
  * The Customer accepting the request — their tap, which the platform gives us
@@ -558,17 +621,19 @@ $('forge').onclick = () => fire({ kind: 'forged' }, 'sending forged signature');
  */
 $('accept').onclick = async () => {
   if (!current) return;
-  result('accepting request…');
-  const res = await fetch(`/api/accept/${encodeURIComponent(current)}`, { method: 'POST' });
-  const body = (await res.json()) as { error?: string };
-  if (!res.ok) return result(body.error ?? 'refused', true);
+  const customerId = current;
 
-  requestPending = false;
-  $('request').hidden = true;
-  refreshComposer();
-  result('request accepted — the concierge can reply now');
-  await Promise.all([loadThreads(), loadActivity()]);
-  await openThread(current);
+  await whileBusy($('accept'), 'accepting request', async () => {
+    const res = await fetch(`/api/accept/${encodeURIComponent(customerId)}`, { method: 'POST' });
+    const body = (await res.json()) as { error?: string };
+    if (!res.ok) return result(body.error ?? 'refused', true);
+
+    requestPending = false;
+    $('request').hidden = true;
+    result('request accepted — the concierge can reply now');
+    await Promise.all([loadThreads(), loadActivity()]);
+    await openThread(customerId);
+  });
 };
 
 /**
@@ -585,8 +650,7 @@ $('accept').onclick = async () => {
 $('clear').onclick = async () => {
   if (!window.confirm('Clear every conversation, turn and opener decision? This cannot be undone.')) return;
 
-  result('clearing…');
-  try {
+  await whileBusy($('clear'), 'clearing', async () => {
     const res = await fetch('/api/reset', { method: 'POST' });
     const data = await res.json();
     if (!res.ok) return result(data.error ?? 'refused', true);
@@ -602,9 +666,7 @@ $('clear').onclick = async () => {
     $('log').replaceChildren();
     await Promise.all([loadThreads(), loadActivity()]);
     result('cleared');
-  } catch (e) {
-    result(String((e as Error).message), true);
-  }
+  });
 };
 
 
